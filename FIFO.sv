@@ -1,4 +1,4 @@
-/*
+/*  
  *  Create a FIFO (First In First Out) buffer with depth 4 using the given
  *  interface and constraints
  *    - The buffer is initally empty
