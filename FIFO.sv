@@ -15,7 +15,7 @@ module FIFO
 	assign hazard = (wr && full) || (rd && empty);
 	assign valid_rd = rd && !empty;
 	assign valid_wr = wr && !full;
-	assign full = (count == 4);
+	assign full = (count == 5);
 	assign empty = (count == 0);
 	
 	assign data_out = (!hazard) ? data_pkt : 'z;
@@ -27,18 +27,21 @@ module FIFO
 			rd_ptr <= '0;
 			wr_ptr <= '0;
 			count <= '0;
-			data_queue[0] <= '0;
-			data_queue[1] <= '0;
-			data_queue[2] <= '0;
-			data_queue[3] <= '0;
+			data_queue <= '{default:'0};
 		end else if (valid_wr) begin
-			data_queue[wr_ptr] <= data_in;
-			wr_ptr <= wr_ptr + 2'd1;
 			count <= count + 3'd1;
+			if (empty) begin
+				data_pkt <= data_in;
+			end else begin
+				data_queue[wr_ptr] <= data_in;
+				wr_ptr <= wr_ptr + 2'd1;
+			end
 		end else if (valid_rd) begin 
-			data_pkt <= data_queue[rd_ptr];
-			rd_ptr <= rd_ptr + 2'd1;
 			count <= count - 3'd1;
+			if (!full) begin 
+				rd_ptr <= rd_ptr + 2'd1;
+				data_pkt <= data_queue[rd_ptr];
+			end
 		end
 	end
 	
