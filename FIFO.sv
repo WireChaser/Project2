@@ -32,19 +32,25 @@ module FIFO
 			pkt_loaded <= '0;
 		end else if (valid_wr) begin
 			count <= count + 4'd1;
-			if (empty) begin
+			if (!pkt_loaded && empty) begin
 				data_pkt <= data_in;
 				pkt_loaded <= 1'd1;
-			end else if (!empty) begin
+			end else if (!pkt_loaded && !empty) begin
+				data_pkt <= data_queue[wr_ptr - rd_ptr];
+				data_queue[wr_ptr] <= data_in;
+				wr_ptr <= wr_ptr + 2'd1;
+				pkt_loaded <= 1'd1;
+				rd_ptr <= rd_ptr + 2'd1;
+			end else if (pkt_loaded && !empty) begin
 				data_queue[wr_ptr] <= data_in;
 				wr_ptr <= wr_ptr + 2'd1;
 			end
 		end else if (valid_rd) begin 
 			count <= count - 4'd1;
 			if (!pkt_loaded) begin 
-				rd_ptr <= rd_ptr + 2'd1;
 				data_pkt <= data_queue[rd_ptr];
-			end else if (pkt_loaded) begin 
+				rd_ptr <= rd_ptr + 2'd1;
+			end else if (pkt_loaded && !empty) begin 
 				pkt_loaded <= '0;
 			end
 		end
