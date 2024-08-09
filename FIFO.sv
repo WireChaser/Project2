@@ -8,8 +8,9 @@ module FIFO
 	logic [31:0] data_queue [3:0]; 
 	logic [31:0] data_pkt;
 	logic [1:0] wr_ptr, rd_ptr;
-	logic [2:0] count;
+	logic [3:0] count;
 	logic hazard, valid_rd, valid_wr;
+	logic pkt_loaded;
 	
 	// Status signals
 	assign hazard = (wr && full) || (rd && empty);
@@ -28,19 +29,23 @@ module FIFO
 			wr_ptr <= '0;
 			count <= '0;
 			data_queue <= '{default:'0};
+			pkt_loaded <= '0;
 		end else if (valid_wr) begin
-			count <= count + 3'd1;
+			count <= count + 4'd1;
 			if (empty) begin
 				data_pkt <= data_in;
-			end else begin
+				pkt_loaded <= 1'd1;
+			end else if (!empty) begin
 				data_queue[wr_ptr] <= data_in;
 				wr_ptr <= wr_ptr + 2'd1;
 			end
 		end else if (valid_rd) begin 
-			count <= count - 3'd1;
-			if (!full) begin 
+			count <= count - 4'd1;
+			if (!pkt_loaded) begin 
 				rd_ptr <= rd_ptr + 2'd1;
 				data_pkt <= data_queue[rd_ptr];
+			end else if (pkt_loaded) begin 
+				pkt_loaded <= '0;
 			end
 		end
 	end
