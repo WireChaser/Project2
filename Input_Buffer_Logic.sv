@@ -7,22 +7,22 @@ module Input_Buffer_Logic (
 	input wire data_routed,
 	input wire node_transfering,
 	input wire [7:0] data_in,
-	output logic input_buffer_loaded,
-	output logic [3:0][7:0] input_buffer_data);
+	output logic data_ready,
+	output logic [3:0][7:0] data_out);
 								
 	logic [1:0] ptr;
 	
 	always_ff @(posedge clock) begin 
 		if (!reset_n) begin
-			input_buffer_loaded <= '0;
-			input_buffer_data <= '0;
+			data_ready <= '0;
+			data_out <= '0;
 			ptr <= 2'd3;
 		end else if (node_transfering) begin
-			input_buffer_data[ptr] <= data_in;
+			data_out[ptr] <= data_in;
 			ptr <= ptr - 2'd1;
-			if (ptr == 0) input_buffer_loaded <= '1;
+			if (ptr == 0) data_ready <= '1;
 		end else if (data_routed) begin 
-			input_buffer_loaded <= '0;
+			data_ready <= '0;
 		end 
 	end 
 
