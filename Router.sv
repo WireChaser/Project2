@@ -14,50 +14,71 @@ module Router #(parameter ROUTERID = 0) (
 	output logic [3:0] 			put_outbound,      // Router is transferring to node (4 signals)
 	output logic [3:0][7:0]		payload_outbound); // Data sent from router to node
 	
-	logic [31:0] data_internal_transfer [3:0];
-	logic [31:0] data_out_transfer [3:0];
-	logic input_buffer_loaded, data_routed;
+	logic [31:0] data_to_routing [3:0];
+	logic [31:0] data_from_routing [3:0];
+	logic data_ready_in [3:0];
+	logic data_ready_out [3:0];
+	logic data_routed_in [3:0];
+	logic data_routed_out [3:0];
 	
-	assign free_inbound[0] = ~input_buffer_loaded;
+	assign free_inbound[0] = ~data_ready_in[0];
+	assign free_inbound[1] = ~data_ready_in[1];
+	assign free_inbound[2] = ~data_ready_in[2];
+	assign free_inbound[3] = ~data_ready_in[3];
 	
 	/////////////////////////////////////////////////////////////////////////////////
 	/////// Input Buffer Logic
 	/////////////////////////////////////////////////////////////////////////////////
 	
-	Input_Buffer_Logic Port0_Input_Buffer (
-		.clock(clock), 
-		.reset_n(reset_n),
-		.node_transfering(put_inbound[0]), 
-		.data_routed(data_routed),			
-		.data_in(payload_inbound[0]),
-		.input_buffer_loaded(input_buffer_loaded),	
-		.input_buffer_data(data_internal_transfer[0])
-	);	
-	
+	genvar a;
+	generate 
+		for (a = 0; a < 4; a++) begin: generate_input_buffers
+			Input_Buffer_Logic Input_Buffer (
+				.clock					(clock), 
+				.reset_n					(reset_n),
+				.node_transfering		(put_inbound[a]), 	
+				.data_routed			(data_routed_out[a]),			
+				.data_in					(payload_inbound[a]), 
+				.data_ready				(data_ready_in[a]),	
+				.data_out				(data_to_routing[a])	 
+			);		
+		end
+	endgenerate 
 	
 	/////////////////////////////////////////////////////////////////////////////////
 	/////// Routing Logic
 	/////////////////////////////////////////////////////////////////////////////////
 	
 	Routing_Logic V1 (
-		.data_in (data_internal_transfer[0]),
-		.data_out (data_out_transfer)
+		.clock					(clock),
+		.reset_n					(reset_n),
+		.data_in 		  		(data_to_routing),
+		.data_routed_in  		(data_routed_in),
+		.data_ready_in  		(data_ready_in),
+		.data_out 		  		(data_from_routing),
+		.data_routed_out 		(data_routed_out),
+		.data_ready_out 		(data_ready_out)
 	);
 	
 	/////////////////////////////////////////////////////////////////////////////////
 	/////// Output Buffer Logic
 	/////////////////////////////////////////////////////////////////////////////////
 	
-	Output_Buffer_Logic Port2_Output_Buffer (
-		.clock(clock), 
-		.reset_n(reset_n),
-		.ready_to_receive(free_outbound[2]),
-		.input_buffer_loaded(input_buffer_loaded),
-		.data_in(data_out_transfer[2]),
-		.data_routed(data_routed),
-		.data_transfer_out(put_outbound[2]),
-		.output_buffer_data(payload_outbound[2])
-	);
+	genvar b;
+	generate
+		for (b = 0; b < 4; b++) begin: generate_output_buffer
+			Output_Buffer_Logic Output_Buffer (
+				.clock						(clock), 
+				.reset_n						(reset_n),
+				.ready_to_receive			(free_outbound[b]),		  // Leave alone
+				.input_buffer_loaded		(data_ready_out[b]),
+				.data_in						(data_from_routing[b]),
+				.data_routed				(data_routed_in[b]),
+				.data_transfer_out		(put_outbound[b]),		  // Leave alone
+				.output_buffer_data		(payload_outbound[b])	  // Leave alone
+			);
+		end
+	endgenerate
 	
 	/////////////////////////////////////////////////////////////////////////////////
 	
