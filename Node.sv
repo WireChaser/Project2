@@ -6,7 +6,7 @@ module Node #(parameter NODEID = 0) (
 	input wire clock, reset_n,
 	
 	//Interface to testbench: the blue arrows
-	input  wire pkt_t pkt_in,        // Data packet from the TB
+	input pkt_t pkt_in,        // Data packet from the TB
 	input  wire pkt_in_avail,  // The packet from TB is available
 	output logic cQ_full,       // The queue is full
 	
@@ -22,63 +22,111 @@ module Node #(parameter NODEID = 0) (
 	input  wire       put_inbound,      // Router is transferring to node
 	input  wire [7:0] payload_inbound); // Data sent from router to node
 	
-	logic [1:0] pkt_out_ptr, pkt_in_ptr; 
-	logic [3:0] [7:0] data_pkt_in, data_pkt_out;
-	logic empty, latched;
-	logic [3:0] counter;
-	logic read;
-	
-	assign read = free_outbound && !latched;
-	
-	FIFO FIFO_inst
-		(.clock(clock), 
-		.reset_n(reset_n),
-		.wr(pkt_in_avail), 
-		.rd(read),
-		.data_in(pkt_in), 
-		.full(cQ_full), 
-		.empty(empty),
-		.data_out(data_pkt_out));
-		
-	assign payload_outbound = data_pkt_out[pkt_out_ptr];
-		
-	// Node to Receiver Protocol 
-	always_ff @(posedge clock) begin 
-		if (!reset_n) begin
-			put_outbound <= '0;
-			pkt_out_ptr <= 2'd3;
-			latched <= '0;
-		end else if (latched || free_outbound) begin 
-			latched <= 1'd1;
-			put_outbound <= 1'd1;
-			if (latched) begin pkt_out_ptr <= pkt_out_ptr - 2'd1; end
-			if (pkt_out_ptr == 0) begin 
-				pkt_out_ptr <= 2'd3;
-				latched <= '0;
-				put_outbound <= '0;
-			end 
-		end 
-	end
-	
-	assign pkt_out = (pkt_out_avail) ? data_pkt_in : 'z;
-	assign free_inbound = (!pkt_out_avail) ? '1 : '0;
-	
-	// Node to Testbench Protocol 
-	always_ff @(posedge clock) begin 
-		if (!reset_n) begin 
-			pkt_out_avail 	<= '0;
-			pkt_in_ptr <= 2'd3;
-			data_pkt_in <= '0;
-		end else if (free_inbound && put_inbound) begin 
-			data_pkt_in[pkt_in_ptr] <= payload_inbound;
-			if (pkt_in_ptr == 0) begin 
-				pkt_in_ptr <= 2'd3;
-				pkt_out_avail <= 1'd1;
-			end else pkt_in_ptr <= pkt_in_ptr - 2'd1;
-		end else if (pkt_out_avail) begin 
-			pkt_out_avail <= '0;
-		end
-	end 
+	logic [3:0][7:0] q_out;
+	logic q_empty, q_ready, fifo_read;
 
-endmodule : Node
+	assign q_ready = ~q_empty;
+
+	FIFO FIFO	(.clock(clock), 
+					.reset_n(reset_n), 
+					.data_in(pkt_in), 
+					.we(pkt_in_avail), 
+					.data_out(q_out),
+					.re(fifo_read),
+					.full(cQ_full), 
+					.empty(q_empty));
+					
+  // Packet to Serial
+  logic [3:0][7:0] buffer_in;
+  logic [2:0] serial_ptr;
+
+  always_ff @(posedge clock or negedge reset_n) begin
+    if (!reset_n) begin
+		buffer_in <= 0;
+    end else begin 
+		buffer_in <= (fifo_read) ? q_out : buffer_in;
+	 end 
+  end
+
+  assign payload_outbound = buffer_in[4 - serial_ptr];
+  
+  // Finite State Machine
+  logic done;
+  
+  typedef enum logic [1:0] {HOLD, LOAD, SEND} state_t;
+  state_t state;
+  
+  always_ff @(posedge clock or negedge reset_n) begin
+    if (!reset_n) begin
+		state <= HOLD;
+    end else begin 
+		 case(state)
+			HOLD: state <= (q_ready) ? LOAD : HOLD;
+			LOAD: state <= (free_outbound) ? SEND : LOAD;
+			SEND: state <= (serial_ptr == 4) ? (q_ready) ? LOAD : HOLD : SEND;
+		 endcase
+	 end
+  end
+  
+   always_ff @(posedge clock or negedge reset_n) begin
+		if (!reset_n) begin
+			serial_ptr <= 0;
+		end else if (serial_ptr == 4) begin 
+			serial_ptr <= '0;
+		end else if (state == SEND || (free_outbound && state == LOAD)) begin
+			serial_ptr <= serial_ptr + 3'd1;
+		end else begin
+			serial_ptr <= '0;
+		end
+	end
+
+  assign done = (state == SEND && serial_ptr == 4);
+  assign put_outbound = (serial_ptr > 0);
+  assign fifo_read = (state == HOLD || done);
+									    
+  // Serial to Packet
+  logic [0:3][7:0] buffer_out;
+  logic [2:0] pkt_ptr;
+
+	always_ff @(posedge clock or negedge reset_n) begin
+		if (!reset_n) begin
+			free_inbound <= '1;
+			pkt_ptr <= '0;
+			buffer_out <= '0;
+		end else if (put_inbound) begin 
+		   pkt_ptr <= pkt_ptr + 3'd1;
+			buffer_out[pkt_ptr] <= payload_inbound;
+			free_inbound <= ~put_inbound;
+		end else begin
+			pkt_ptr <= '0;
+			buffer_out <= '0;
+			free_inbound <= ~put_inbound;
+		end
+	end
+
+  assign pkt_out = buffer_out;
+  assign pkt_out_avail = (!free_inbound && !put_inbound);
+
+endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
