@@ -70,7 +70,7 @@ module Node #(parameter NODEID = 0) (
   
    always_ff @(posedge clock or negedge reset_n) begin
 		if (!reset_n) begin
-			serial_ptr <= 0;
+			serial_ptr <= '0;
 		end else if (serial_ptr == 4) begin 
 			serial_ptr <= '0;
 		end else if (state == SEND || (free_outbound && state == LOAD)) begin
