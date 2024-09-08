@@ -2,7 +2,7 @@ module Output_Buffer_Logic (
   input clock, reset_n, pkt_avail, read_from_ob,
   input pkt_t pkt,
   output [7:0] payload_outbound,
-  output put_outbound, full);
+  output put_outbound, full); 
 
   pkt_t pkt_out;
   logic read_in, q_empty, pkt_out_avail;

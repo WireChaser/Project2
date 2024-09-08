@@ -1,7 +1,7 @@
 module Input_Buffer_Logic (
   input logic clock, reset_n, put, read,
   input logic [7:0] payload,
-  output logic pkt_out_avail, full,
+  output logic pkt_out_avail, full, 
   output pkt_t pkt_out);
 
   // output from serial to queue

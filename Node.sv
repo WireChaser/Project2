@@ -1,7 +1,7 @@
 `default_nettype none
 `include "Router.svh"
 `include "RouterPkg.pkg"
-
+ 
 module Node #(parameter NODEID = 0) (
 	input wire clock, reset_n,
 	

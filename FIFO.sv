@@ -3,7 +3,7 @@ module FIFO #(parameter WIDTH = 32) (
   input wire [WIDTH-1:0] data_in,
   input wire we, //write enable
   input wire re, //read enable
-  output logic full,
+  output logic full, 
   output logic empty,
   output logic [WIDTH-1:0] data_out);
 

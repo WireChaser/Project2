@@ -2,7 +2,7 @@
 module Routing_Logic #(parameter ROUTERID = 0)(
 	 input logic clock, reset_n,
 	 input logic [3:0] ob_ready_to_recv,
-	 input logic [3:0] pkt_in_avail,
+	 input logic [3:0] pkt_in_avail, 
 	 input pkt_t [3:0] pkt_in,
 	 output logic [3:0] read_from_ib,
 	 output pkt_t [3:0] pkt_out,
