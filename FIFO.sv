@@ -1,11 +1,11 @@
-module FIFO #(parameter WIDTH = 32) (
-  input wire clock, reset_n,
-  input wire [WIDTH-1:0] data_in,
-  input wire we, //write enable
-  input wire re, //read enable
-  output logic full, 
-  output logic empty,
-  output logic [WIDTH-1:0] data_out);
+module FIFO #(parameter WIDTH = 32) ( 
+  input wire clock, reset_n,          
+  input wire [WIDTH-1:0] data_in,      // Data to be written into the FIFO
+  input wire we,                       // Write enable signal
+  input wire re,                       // Read enable signal
+  output logic full,                   // Indicates if the FIFO is full
+  output logic empty,                  // Indicates if the FIFO is empty
+  output logic [WIDTH-1:0] data_out);  // Data read from the FIFO
 
   logic [3:0][WIDTH-1:0] queue;
   logic [1:0] w_ptr, r_ptr;
@@ -14,6 +14,8 @@ module FIFO #(parameter WIDTH = 32) (
   
   assign valid_re = re && !empty;
   assign valid_we = we && !full;
+  
+  // Hazard: simultaneous read and write when FIFO is not empty
   assign hazard = re && we && (count > 0);
 
   assign full = (count == 3'd4 && !re);
@@ -26,6 +28,7 @@ module FIFO #(parameter WIDTH = 32) (
 			r_ptr <= 0; 
 			queue <= 0;
 		end else if (hazard) begin 
+			// Handle simultaneous read and write
          queue[w_ptr] <= data_in;
          count <= count;
          w_ptr <= w_ptr + 2'd1;
@@ -39,7 +42,8 @@ module FIFO #(parameter WIDTH = 32) (
         r_ptr <= r_ptr + 2'd1;
       end
   end  
-
+	
+	// Output data is read from the current read pointer location
   assign data_out = queue[r_ptr];
 
 endmodule
