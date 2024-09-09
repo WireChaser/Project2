@@ -116,8 +116,6 @@ module Routing_Logic #(parameter ROUTERID = 0)(
 	end
 
 endmodule : Routing_Logic
-<<<<<<< HEAD
-=======
 
 // Round Robin Arbitration
 module Arbiter (
@@ -168,5 +166,3 @@ module Arbiter (
 	end
 
 endmodule: Arbiter
-
->>>>>>> origin/Master
