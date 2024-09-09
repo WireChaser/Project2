@@ -1,3 +1,6 @@
+`include "Router.svh"
+`include "RouterPkg.pkg"
+
 module Routing_Logic #(parameter ROUTERID = 0)(
 	 input logic clock, reset_n,
     input logic [3:0] ob_ready_to_recv, // Indicates if output buffers are ready to receive packets
@@ -92,17 +95,20 @@ module Arbiter (
 	typedef enum logic [3:0] {PORT0 = 4'b0001, PORT1 = 4'b0010, PORT2 = 4'b0100, PORT3 = 4'b1000} port_t;
 	port_t current_grant;
 
-	logic [15:0] all_requests;	// Concatenated requests from all input-output pairs
-	assign all_requests = {request[3], request[2], request[1], request[0]};
-
 	always_comb begin
-		num_requests = 0;
-		for (int i = 0; i < 16; i++) begin
-			num_requests += all_requests[i];
-		end
+		 multiple_requests = '0; 
+		 // Iterate over each Input Port
+		 for (int j = 0; j < 4; j++) begin 
+			  num_requests = '0;
+			  // Iterate over each Output Port
+			  for (int i = 0; i < 4; i++) begin 
+					num_requests += request[i][j]; // Checks all
+			  end
+			  if (num_requests > 1) begin 
+					multiple_requests = 1'b1; // Contention detected for this output port
+			  end
+		 end
 	end
-
-	assign multiple_requests = (num_requests > 1) ? 1'b1 : 1'b0;
 
 	/*** Round Robin Arbiter ***/
 	always_ff @(posedge clock or negedge reset_n) begin
@@ -118,15 +124,12 @@ module Arbiter (
 			endcase
 			grant <= current_grant;
 		end else begin
-			 if (|request[0]) 
-				grant <= 4'b0001;
-			 else if (|request[1])
-				grant <= 4'b0010;
-			 else if (|request[2])
-				grant <= 4'b0100;
-			 else if (|request[3])
-				grant <= 4'b1000; 
+			 if (|request[0]) grant[0] <= '1;
+			 if (|request[1]) grant[1] <= '1;
+			 if (|request[2]) grant[2] <= '1;
+			 if (|request[3]) grant[3] <= '1; 
 		end
 	end
 
 endmodule: Arbiter
+
