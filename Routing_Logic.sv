@@ -1,3 +1,7 @@
+// This module implements a routing logic with a crossbar switch and round-robin arbiter 
+// to manage packet switching between input and output ports. It includes conditional arbitration
+// to optimize for low-traffic scenarios
+
 module Routing_Logic #(parameter ROUTERID = 0)(
 	 input logic clock, reset_n,
     input logic [3:0] ob_ready_to_recv, // Indicates if output buffers are ready to receive packets
@@ -15,6 +19,8 @@ module Routing_Logic #(parameter ROUTERID = 0)(
 	// Intermediate Signals for Arbiter
 	logic [3:0][3:0] request;
 	logic [3:0] grant;
+   logic [5:0] num_requests;
+	logic port_contention;
 
 	typedef enum logic [3:0] {NODE0, NODE1, NODE2, NODE3, NODE4, NODE5} node_t;
 	typedef enum logic [1:0] {PORT0, PORT1, PORT2, PORT3} port_t;
@@ -31,8 +37,8 @@ module Routing_Logic #(parameter ROUTERID = 0)(
 		for (int j = 0; j < 4; j++) begin	// Tallies requests for all 4 input ports for each output port 
 				request[i][j] = (port_sel[i] == j) && pkt_in_avail[i];	// Request made if output port (j) is selected
 		end
-		// Check if this input port has been granted access
-		if (grant[i]) begin
+		// Check if this input port has been granted access or if there is no port contention 
+      if (grant[i] || !port_contention) begin
 			// Only proceed if the output port hasn't been assigned yet
 			if (!port_assigned[port_sel[i]] && ob_ready_to_recv[port_sel[i]] && pkt_in_avail[i]) begin
 				pkt_out[port_sel[i]] = pkt_in[i];
@@ -45,14 +51,42 @@ module Routing_Logic #(parameter ROUTERID = 0)(
 			read_from_ib[i] = pkt_accepted[i] && pkt_in_avail[i];
 		end
 	end
+  
+   /*** Sets Port Contention if there multiple requests ***/
+  	always_comb begin
+		 port_contention = '0; 
+		 // Iterate over each Input Port
+		 for (int j = 0; j < 4; j++) begin 
+			  num_requests = '0;
+			  // Iterate over each Output Port
+			  for (int i = 0; i < 4; i++) begin 
+					num_requests += request[i][j]; // Checks all
+			  end
+			  if (num_requests > 1) begin 
+					port_contention = 1'b1; // Contention when there are multiple requests for same port 
+			  end
+		 end
+	end
 
-	/*** Central Arbiter ***/
-	Arbiter arbiter_inst (.clock(clock),
-								.reset_n(reset_n),
-								.request(request),
-								.grant(grant));
+	/*** Round Robin Arbiter ***/
+	typedef enum logic [3:0] {OUT0 = 4'b0001, OUT1 = 4'b0010, OUT2 = 4'b0100, OUT3 = 4'b1000} out_t;
+	out_t current_grant;
+
+	always_ff @(posedge clock or negedge reset_n) begin
+		if (!reset_n) begin
+			grant <= '0;
+			current_grant <= OUT0;
+		end else if (port_contention) begin
+			case (current_grant)
+				OUT0: current_grant <= OUT1;
+				OUT1: current_grant <= OUT2;
+				OUT2: current_grant <= OUT3;
+				OUT3: current_grant <= OUT0;
+			endcase
+			grant <= current_grant;
+		end 
+	end
 									
-
 	/*** Static Routing Table based on ROUTERID ***/
 	always_comb begin
 		if (ROUTERID[0] == 0) begin
@@ -79,54 +113,3 @@ module Routing_Logic #(parameter ROUTERID = 0)(
 	end
 
 endmodule : Routing_Logic
-
-// Round Robin Arbitration
-module Arbiter (
-	input logic clock, reset_n,
-	input logic [3:0][3:0] request,
-	output logic [3:0] grant);
-
-	logic [5:0] num_requests;
-	logic multiple_requests;
-
-	typedef enum logic [3:0] {PORT0 = 4'b0001, PORT1 = 4'b0010, PORT2 = 4'b0100, PORT3 = 4'b1000} port_t;
-	port_t current_grant;
-
-	logic [15:0] all_requests;	// Concatenated requests from all input-output pairs
-	assign all_requests = {request[3], request[2], request[1], request[0]};
-
-	always_comb begin
-		num_requests = 0;
-		for (int i = 0; i < 16; i++) begin
-			num_requests += all_requests[i];
-		end
-	end
-
-	assign multiple_requests = (num_requests > 1) ? 1'b1 : 1'b0;
-
-	/*** Round Robin Arbiter ***/
-	always_ff @(posedge clock or negedge reset_n) begin
-		if (!reset_n) begin
-			grant <= '0;
-			current_grant <= PORT0;
-		end else if (multiple_requests) begin
-			case (current_grant)
-				PORT0: current_grant <= PORT1;
-				PORT1: current_grant <= PORT2;
-				PORT2: current_grant <= PORT3;
-				PORT3: current_grant <= PORT0;
-			endcase
-			grant <= current_grant;
-		end else begin
-			 if (|request[0]) 
-				grant <= 4'b0001;
-			 else if (|request[1])
-				grant <= 4'b0010;
-			 else if (|request[2])
-				grant <= 4'b0100;
-			 else if (|request[3])
-				grant <= 4'b1000; 
-		end
-	end
-
-endmodule: Arbiter
