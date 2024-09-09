@@ -1,3 +1,6 @@
+`include "Router.svh"
+`include "RouterPkg.pkg"
+
 // This module implements a routing logic with a crossbar switch and round-robin arbiter 
 // to manage packet switching between input and output ports. It includes conditional arbitration
 // to optimize for low-traffic scenarios
@@ -113,3 +116,57 @@ module Routing_Logic #(parameter ROUTERID = 0)(
 	end
 
 endmodule : Routing_Logic
+<<<<<<< HEAD
+=======
+
+// Round Robin Arbitration
+module Arbiter (
+	input logic clock, reset_n,
+	input logic [3:0][3:0] request,
+	output logic [3:0] grant);
+
+	logic [5:0] num_requests;
+	logic multiple_requests;
+
+	typedef enum logic [3:0] {PORT0 = 4'b0001, PORT1 = 4'b0010, PORT2 = 4'b0100, PORT3 = 4'b1000} port_t;
+	port_t current_grant;
+
+	always_comb begin
+		 multiple_requests = '0; 
+		 // Iterate over each Input Port
+		 for (int j = 0; j < 4; j++) begin 
+			  num_requests = '0;
+			  // Iterate over each Output Port
+			  for (int i = 0; i < 4; i++) begin 
+					num_requests += request[i][j]; // Checks all
+			  end
+			  if (num_requests > 1) begin 
+					multiple_requests = 1'b1; // Contention detected for this output port
+			  end
+		 end
+	end
+
+	/*** Round Robin Arbiter ***/
+	always_ff @(posedge clock or negedge reset_n) begin
+		if (!reset_n) begin
+			grant <= '0;
+			current_grant <= PORT0;
+		end else if (multiple_requests) begin
+			case (current_grant)
+				PORT0: current_grant <= PORT1;
+				PORT1: current_grant <= PORT2;
+				PORT2: current_grant <= PORT3;
+				PORT3: current_grant <= PORT0;
+			endcase
+			grant <= current_grant;
+		end else begin
+			 if (|request[0]) grant[0] <= '1;
+			 if (|request[1]) grant[1] <= '1;
+			 if (|request[2]) grant[2] <= '1;
+			 if (|request[3]) grant[3] <= '1; 
+		end
+	end
+
+endmodule: Arbiter
+
+>>>>>>> origin/Master
