@@ -54,6 +54,19 @@ Each component connects to a node, and communication occurs by sending packets t
 - **Conditional Round-Robin Arbitration:** The router employs a conditional round-robin arbitration scheme to handle port contention.
    - **Contention Resolution:** If multiple packets are destined for the same output port in a given cycle, the arbiter grants access to one packet, and the others are queued for subsequent cycles using a round-robin approach to ensure fairness
    - **No Contention Optimization:** If each of the four input ports has a packet destined for a different output port, the routing is performed instantly without arbitration, maximizing throughput in scenarios without contention.
+     
+- **Crossbar Switch for Routing:** A crossbar switch is employed within the router for flexible packet routing.
+   - Allows any input port to connect to any available output port, providing flexibility in routing decisions
+   - Can handle multiple simultaneous packet transfers if they are destined for different output ports
+   - Enables efficient implementation of the conditional round-robin arbitration scheme
+ 
+- **Limitations of arbitration scheme:**
+   - **Starvation Potential:** While round-robin arbitration aims to be fair, under heavy load with persistent contention for a specific output port, some packets could experience significant delays or even starvation if they are consistently unlucky in the arbitration process
+   - **Not Adaptive to Traffic Patterns:** The static round-robin approach doesn't adapt to traffic patterns. It might not be the most efficient choice if certain output ports experience significantly higher traffic than others
+ 
+- **Limitations of using a crossbar switch:**
+   - **Contention and Blocking:** Even with arbitration, contention can still occur if multiple packets simultaneously target the same output port. Some packets might experience blocking and delays, affecting overall network performance
+   - **Centralized Control:** The crossbar switch requires centralized control logic for arbitration and path setup, which can add complexity and potentially become a bottleneck in large systems
    
 ## Design Issues and Optimization
 **Issues:**
