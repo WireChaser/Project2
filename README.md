@@ -49,6 +49,11 @@ Each component connects to a node, and communication occurs by sending packets t
 **FIFO**
 1. Used for buffering packets within nodes and routers.
 2. Supports write and read operations and provides full and empty status signals.
+
+## Design Choices and Limitations
+- **Conditional Round-Robin Arbitration:** The router employs a conditional round-robin arbitration scheme to handle port contention.
+   - **Contention Resolution:** If multiple packets are destined for the same output port in a given cycle, the arbiter grants access to one packet, and the others are queued for subsequent cycles using a round-robin approach to ensure fairness
+   - **No Contention Optimization:** If each of the four input ports has a packet destined for a different output port, the routing is performed instantly without arbitration, maximizing throughput in scenarios without contention.
    
 ## Design Issues and Optimization
 **Issues:**
@@ -88,11 +93,9 @@ Each component connects to a node, and communication occurs by sending packets t
   - FAIRNESS: Checks for fairness in packet transmission across the router-to-router connection by sending multiple packets simultaneously and verifying balanced reception at the destination
   - PERFORMANCE: Measures the NoC's performance under real-world conditions by sending a large number of packets and tracking the cycle count
 
-## Techical Issues
-
-## Implementation Details and Results               
-
-## Future Work and Improvements
+## Implementation Details and Results      
+- **Simulation Environment:** Due to lack of access to the Synopsys VCS simulator, the RouterTB was simulated using EDA Playground, while the NodeTB was simulated using Modelsim
+- **Test Results:** At the time of writing, the design has passed the following RouterTB tests: +BASIC, +ACROSS, +BROADCAST, +STRESS_SRC, and +FAIRNESS. However it failed the +STRESS_DEST and +PERFORMANCE tests
 
 ## Acknowledgments
 
