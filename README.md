@@ -106,10 +106,6 @@ Each component connects to a node, and communication occurs by sending packets t
   - FAIRNESS: Checks for fairness in packet transmission across the router-to-router connection by sending multiple packets simultaneously and verifying balanced reception at the destination
   - PERFORMANCE: Measures the NoC's performance under real-world conditions by sending a large number of packets and tracking the cycle count
 
-## Implementation Details and Results      
-- **Simulation Environment:** Due to lack of access to the Synopsys VCS simulator, the RouterTB was simulated using EDA Playground, while the NodeTB was simulated using Modelsim
-- **Test Results:** At the time of writing, the design has passed the following RouterTB tests: +BASIC, +ACROSS, +BROADCAST, +STRESS_SRC, and +FAIRNESS. However it failed the +STRESS_DEST and +PERFORMANCE tests
-
 ## Acknowledgments
 
 This project was inspired by a project assignment in the Logic Design and Verification course at Carnegie Mellon University.  The original assignment provided the foundation for this implementation. All testbench files were from the 18341 repository and were slightly modified to use in EDA Playground.
